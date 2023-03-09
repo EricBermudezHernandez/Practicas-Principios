@@ -71,7 +71,6 @@ chivato: .asciiz "\nSEN_X: \n"
 # n -> $s0
 # denominador -> $s1
 # signo -> $s2
-# -signo -> $s3
 
 main:
 # std::cout << "\n\nAproximación a sen(x) (-1 <= x <= 1) con un error máximo, usando Taylor\n";
@@ -155,9 +154,9 @@ do_secundario3:
 	mov.d $f4, $f24
 # n++; // incremento el termino
 	addi $s0,$s0, 1
-	move $s0, $s0
 # signo = -signo; // el signo se alterna
-	neg $s3, $s2
+	neg $s2, $s2
+	
 # numerador($f28) *= xx($f26); 
 	mul.d $f28, $f28, $f26
 # denominador = (2*n+1) * 2*n * denominador;
@@ -176,29 +175,29 @@ do_secundario3:
 	mul $s1, $t8, $s1
 # termino($f8) = signo * numerador / denominador; // ultimo termino
 # $f28(numerador) / $f18(denominador)
-	mtc1 $s1, $f0 # Convertimos la cariable entera denominador($s1) a double
-	mov.d $f18, $f0
+	mtc1 $s1, $f0 # Convertimos la variable entera denominador($s1) a double
+	cvt.d.w $f18, $f0
 	div.d $f8, $f28, $f18
-# termino($f8) = $f30(signo) * $f8(numerador / denominador)
-	mtc1 $s3, $f0
-	mov.d $f30, $f0
-	mul.d $f10, $f8, $f30
+# termino($f10) = $f18(signo) * $f8(numerador / denominador)
+	mtc1 $s2, $f0 # pasamos s2 a flotante
+	cvt.d.w $f18, $f0
+	mul.d $f10, $f8, $f18
 # sen_x += termino;
 	add.d $f24, $f24, $f10
 
 # error_calculado = fabs(($f24(sen_x) - $f4(old_senx) / $f24(sen_x);
 # (sen_x - old_senx) / sen_x):
 
-# ($f24(sen_x) - $f4(old_senx)
+# $f10 = ($f24(sen_x) - $f4(old_senx)
 	sub.d $f10, $f24, $f4
 # $f10(sen_x - old_senx) / $f24(sen_x)
 	div.d $f18, $f10, $f24
 
 # fabs($f10)
 	abs.d $f16, $f18
-	mov.d $f10,$f16
+
 # error_calculado = fabs($f10)
-	mov.d $f30, $f10
+	mov.d $f30, $f16
 
 # Condición while: while (error_calculado >= error);
 	c.lt.d $f30, $f22 # error_calculado($f30) < error($f22)
