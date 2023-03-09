@@ -66,143 +66,130 @@ chivato: .asciiz "\nSEN_X: \n"
 #Registros temporales:
 # old_senx -> $f4 
 # termino -> $f8
+# n -> $f16
+# denominador -> $f18 
 #--------------------------
 #Variables de tipo entero:
-# n -> $s0
-# denominador -> $s1
 # signo -> $s2
 
 main:
+
 # std::cout << "\n\nAproximación a sen(x) (-1 <= x <= 1) con un error máximo, usando Taylor\n";
-	li $v0, 4
-	la $a0, titulo
-	syscall
+    li $v0, 4
+    la $a0, titulo
+    syscall
 
 do_principal:
 
 do_secundario1:
-# do {
 # std::cout << "\n\nIntroduzca el valor de x (-1 <= x <= 1): ";
+    li $v0, 4
+    la $a0, petx
+    syscall
 # std::cin >> x;
+    li $v0, 7
+    syscall
+    mov.d $f20, $f0
 # } while ( (x < -1) || (x > 1));
-
-# std::cout << "\n\nIntroduzca el valor de x (-1 <= x <= 1): ";
-	li $v0, 4
-	la $a0, petx
-	syscall
-# std::cin >> x;
-	li $v0, 7
-	syscall
-	mov.d $f20, $f0
-
-# Declaro dos registros temporales para hacer las comparaciones del while:
-# while ( (x < -1) || (x > 1));
-	li.d $f0, -1.0
-	li.d $f2, 1.0
-
-# (x < -1)
-	c.lt.d $f20, $f0
-	bc1t do_secundario1 # Salta a do_secundario1 si el resultado de la comparación es verdadero
-
-# (x > 1)
-	c.le.d $f20, $f2
-	bc1t do_secundario2 # Salta a do_secundario1 si el resultado de la comparación es verdadero
-	b do_secundario1
-
-do_secundario2:
+# Primera condición while: (x < -1)
+    li.d $f10, -1.0
+    c.lt.d $f20, $f10 # comparamos x($f20) con -1($f10)
+    bc1t do_secundario1 # tal como estamos traduciendo, si se cumple la condición 
+                        # saltamos al principio del bucle
+# Segunda condición while: (x > 1)
+    li.d $f10, 1.0
+    c.le.d $f20, $f10 # Hacemos la condición inversa, comparando si x es menor o igual a 1
+    bc1f do_secundario1 # Si no se cumple la condición inversa, es que es mayor, 
+                        # por lo que saltamos al principio del bucle tal y como queremos
 # do {
+do_secundario2:
 # std::cout << "\nIntroduzca el error maximo permitido en la aproximación (0 < error < 1) (error <= 0 sale del programa): ";
+    li $v0, 4
+    la $a0, pete
+    syscall
 # std::cin >> error;
-# } while (error >= 1);
+    li $v0, 7
+    syscall
+    mov.d $f22, $f0
+# while (error >= 1);
+    li.d $f10, 1.0 # volvemos a hacer el li.d por que,
+                   # $f10 al ser un registro temporal perdió el  valor después del syscall anterior
+    c.lt.d $f22, $f10 # Comprobamos la condición inversa
+    bc1f do_secundario2 # Si no se cumple la condición inversa, es que es mayor o igual,
+                        # que es la condición que realmente queremos comprobar para volver al principio del bucle
 
-# std::cout << "\nIntroduzca el error maximo permitido en la aproximación (0 < error < 1) (error <= 0 sale del programa): ";
-	li $v0, 4
-	la $a0, pete
-	syscall
-# std::cin >> error;
-	li $v0, 7
-	syscall
-	mov.d $f22, $f0
-# condición while: while (error >= 1);
-	c.lt.d $f22, $f2
-	bc1t fin_do_secundario2 # Salta a do_secundario2 si se cumple la condición de salir al while
-	b do_secundario2 # si no se cumple, se vuelve al principio del bucle
-
-fin_do_secundario2:
 # if (error <= 0) break;
-# Si se cumple la condición saldrá del do-while principal y se irá al final de el programa
-	li.d $f4, 0.0
-	c.le.d $f22, $f4
-	bc1t fin_programa # Si se cumple la condición de arriba, se termina el programa
-	
+    li.d $f10, 0.0
+    c.le.d $f22, $f10
+    bc1t fin_programa # Si se cumple que es menor o igual, se termina el programa
 # n = 0; // iteraciones
-	li $s0, 0
+    li.d $f16, 0.0
 # numerador = x; // primer numerador del termino para n=0
-	mov.d $f28, $f20
+    mov.d $f28, $f20
 # denominador = 1; // primer denominador del termino para n=0
-	li $s1, 1
+    li.d $f18, 1.0
 # signo = 1;
-	li $s2, 1
+    li $s2, 1
 # sen_x = x; // primer termino
-	mov.d $f24, $f20
-
+    mov.d $f24, $f20
 # double xx = x*x; // el numerador siempre se multiplica por x^2 
-	mul.d $f26, $f20, $f20
+    mul.d $f10, $f20, $f20
+    mov.d $f26, $f10
 
+# do {
 do_secundario3:
+    
 # old_senx = sen_x;
-	mov.d $f4, $f24
+    mov.d $f4, $f24
 # n++; // incremento el termino
-	addi $s0,$s0, 1
+    li.d $f10, 1.0
+    add.d $f16, $f16, $f10
+
 # signo = -signo; // el signo se alterna
-	neg $s2, $s2
-	
-# numerador($f28) *= xx($f26); 
-	mul.d $f28, $f28, $f26
-# denominador = (2*n+1) * 2*n * denominador;
-# (2*n+1)
-	li $t5, 2
-# 2*n
-	mul $t6, $t5, $s0
-# 2*n + 1
-	addi $t6, 1
-# $t6(2*n+1) * $t7($t5(2)*$s0(n))
-# $t7 = 2*n
-	mul $t7, $t5, $s0
-# $t8 = $t6 * $t7
-	mul $t8, $t6, $t7
-# denominador($s1) = $t8((2*n+1) * (2*n)) * $s1(denominador)
-	mul $s1, $t8, $s1
-# termino($f8) = signo * numerador / denominador; // ultimo termino
-# $f28(numerador) / $f18(denominador)
-	mtc1 $s1, $f0 # Convertimos la variable entera denominador($s1) a double
-	cvt.d.w $f18, $f0
-	div.d $f8, $f28, $f18
-# termino($f10) = $f18(signo) * $f8(numerador / denominador)
-	mtc1 $s2, $f0 # pasamos s2 a flotante
-	cvt.d.w $f18, $f0
-	mul.d $f10, $f8, $f18
+    neg $s2, $s2
+# numerador *= xx; 
+    mul.d $f28, $f28, $f26
+# denominador = (2*n+1) * 2*n * denominador; -> Esta operación la realizamos en varios pasos:
+
+# 1. Realizar la operación: "(2*n)"
+    li.d $f10, 2.0 # declaramos una variable auxiliar que vale 2 para multiplicarla a la n($f16)
+    mul.d $f10, $f16, $f10 # hacmos la operación y lo guardamos en $f10
+# 2. Realizar la operación "2*n($f10) * denominador($f18)
+    mul.d $f18, $f10, $f18 # Realizamos la operación y lo guardamos en $f18
+
+# 3. Le sumamos 1 a $f10 = 2*n para después realizar la operación restante
+    li.d $f2, 1.0 # Utilizo el registro $f2 por que no me quedan más registros para utilizar
+    add.d $f10, $f10, $f2 # (2*n) + 1
+# 4. Realizamos la operación final multiplicando los dos registros $f10(2*n + 1) y $f18(2*n * denominador) y almacenándolo en $f18
+    mul.d $f18 , $f18, $f10 # Realizamos la operación:(2*n+1) * 2*n * denominador
+
+# termino = signo * numerador / denominador; // ultimo termino -> Esta operación la realizamos en varios pasos:
+
+# 1. Numerador / denominador
+    div.d $f10, $f28, $f18
+
+# 2. termino = $s2(signo) * $f10(numerador / denominador);
+# primero pasamos $s2 a flotante
+    mtc1 $s2, $f0 # Convertimos la variable entera denominador($s2) a double
+	cvt.d.w $f2, $f0
+    mul.d $f8, $f10, $f2 #Realizamos la operación y la guardamos en $f8
+
 # sen_x += termino;
-	add.d $f24, $f24, $f10
+    add.d $f24, $f24, $f8
+# error_calculado = fabs((sen_x - old_senx) / sen_x); -> Esta operación la dividimos en varios pasos:
+# 1. Realizamos (sen_x - old_senx) y lo guardamos en $f10
+    sub.d $f10, $f24, $f4
 
-# error_calculado = fabs(($f24(sen_x) - $f4(old_senx) / $f24(sen_x);
-# (sen_x - old_senx) / sen_x):
+# 2. Realizamos el valor absoluto de la operación anterior
+    abs.d $f2, $f10
+    mov.d $f30, $f2
+# 2. Hacemos $f2 / sen_x($f24)
+    div.d $f30, $f30, $f24
 
-# $f10 = ($f24(sen_x) - $f4(old_senx)
-	sub.d $f10, $f24, $f4
-# $f10(sen_x - old_senx) / $f24(sen_x)
-	div.d $f18, $f10, $f24
-
-# fabs($f10)
-	abs.d $f16, $f18
-
-# error_calculado = fabs($f10)
-	mov.d $f30, $f16
-
-# Condición while: while (error_calculado >= error);
-	c.lt.d $f30, $f22 # error_calculado($f30) < error($f22)
-	bc1t fin_do_secundario3 # si se cumple la condición de arriba, se sale del bucle
-	b do_secundario3 # si no se cumple, vuelve al principio del bucle
+# while (error_calculado >= error);
+    c.lt.d $f30, $f22 # Comprobamos la condición inversa a la que realmente queremos comprobar
+    bc1f do_secundario3 # si no se cumple la condición inversa es que es mayor o igual, 
+                        # por lo que volvemos al principio del bucle
 
 fin_do_secundario3:
 # std::cout << "\n\n\nsen(x) calculado: " << sen_x;
@@ -230,13 +217,14 @@ fin_do_secundario3:
 	syscall
 
 # std::cout << n
-	li $v0, 1
-	move $a0, $s0
+	li $v0, 3
+	mov.d $f12, $f16
 	syscall
 
 # while(true)
 	b do_principal
 fin_programa:
+
 #    std::cout << "\nFin del programa\n";
 	li $v0, 4
 	la $a0, cadfin
