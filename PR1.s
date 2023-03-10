@@ -153,7 +153,7 @@ do_secundario3:
 
 # 1. Realizar la operación: "(2*n)"
     li.d $f10, 2.0 # declaramos una variable auxiliar que vale 2 para multiplicarla a la n($f16)
-    mul.d $f10, $f16, $f10 # hacmos la operación y lo guardamos en $f10
+    mul.d $f10, $f16, $f10 # hacemos la operación y lo guardamos en $f10
 # 2. Realizar la operación "2*n($f10) * denominador($f18)
     mul.d $f18, $f10, $f18 # Realizamos la operación y lo guardamos en $f18
 
@@ -161,7 +161,7 @@ do_secundario3:
     li.d $f2, 1.0 # Utilizo el registro $f2 por que no me quedan más registros para utilizar
     add.d $f10, $f10, $f2 # (2*n) + 1
 # 4. Realizamos la operación final multiplicando los dos registros $f10(2*n + 1) y $f18(2*n * denominador) y almacenándolo en $f18
-    mul.d $f18 , $f18, $f10 # Realizamos la operación:(2*n+1) * 2*n * denominador
+    mul.d $f18 , $f10, $f18 # Realizamos la operación:(2*n+1) * 2*n * denominador
 
 # termino = signo * numerador / denominador; // ultimo termino -> Esta operación la realizamos en varios pasos:
 
@@ -172,19 +172,16 @@ do_secundario3:
 # primero pasamos $s2 a flotante
     mtc1 $s2, $f0 # Convertimos la variable entera denominador($s2) a double
 	cvt.d.w $f2, $f0
-    mul.d $f8, $f10, $f2 #Realizamos la operación y la guardamos en $f8
+    mul.d $f8, $f10, $f2 # Realizamos la operación y la guardamos en $f8
 
 # sen_x += termino;
     add.d $f24, $f24, $f8
 # error_calculado = fabs((sen_x - old_senx) / sen_x); -> Esta operación la dividimos en varios pasos:
 # 1. Realizamos (sen_x - old_senx) y lo guardamos en $f10
     sub.d $f10, $f24, $f4
-
-# 2. Realizamos el valor absoluto de la operación anterior
-    abs.d $f2, $f10
-    mov.d $f30, $f2
-# 2. Hacemos $f2 / sen_x($f24)
-    div.d $f30, $f30, $f24
+# 2. Hacemos $f10 / sen_x($f24)
+    div.d $f30, $f10, $f24
+    abs.d $f30,$f30
 
 # while (error_calculado >= error);
     c.lt.d $f30, $f22 # Comprobamos la condición inversa a la que realmente queremos comprobar
