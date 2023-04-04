@@ -82,12 +82,32 @@ int main() {
       case 2: {
         std::cout << "Introduzca fila del primer elemento a cambiar: ";
         std::cin >> primer_elemento_fila;
+        if (primer_elemento_fila < 0) {
+          std::cout
+              << "\nError: dimension incorrecta. Numero de fila incorrecto.\n";
+          continue;
+        }
         std::cout << "Introduzca columna del primer elemento a cambiar: ";
         std::cin >> primer_elemento_columna;
+        if (primer_elemento_columna < 0) {
+          std::cout << "\nError: dimension incorrecta. Numero de columna "
+                       "incorrecto.\n";
+          continue;
+        }
         std::cout << "Introduzca fila del segundo elemento a cambiar: ";
         std::cin >> segundo_elemento_fila;
+        if (segundo_elemento_fila < 0) {
+          std::cout
+              << "\nError: dimension incorrecta. Numero de fila incorrecto.\n";
+          continue;
+        }
         std::cout << "Introduzca columna del segundo elemento a cambiar: ";
         std::cin >> segundo_elemento_columna;
+        if (segundo_elemento_columna < 0) {
+          std::cout << "\nError: dimension incorrecta. Numero de columna "
+                       "incorrecto.\n";
+          continue;
+        }
         // aux = (i,j)
         int aux{mat[primer_elemento_fila * ncol + primer_elemento_columna]};
         // Cambiamos los elementos:
@@ -101,27 +121,48 @@ int main() {
       case 3: {
         int suma{0};
         // Sumamos elementos primera fila:
-        for (int j{0}; j < ncol; ++j) {
-          suma += mat[j];
+        if (nfil == 1) {
+          for (int j{0}; j < ncol; ++j) {
+            suma += mat[j];
+          }
+        } else if (ncol == 1) {
+          // Sumamos los elementos de la columna de la izquierda
+          for (int i{(nfil - 1)}; i >= 0; --i) {
+            suma += mat[i * ncol + 0];
+          }
+        } else {
+          for (int j{0}; j < ncol; ++j) {
+            suma += mat[j];
+          }
+          // Sumamos los elementos de la columna de la derecha de la matriz
+          for (int i{1}; i < nfil; ++i) {
+            suma += mat[i * ncol + (ncol - 1)];
+          }
+          // Sumamos los elementos de la fila de abajo
+          for (int j{(ncol - 2)}; j >= 0; --j) {
+            suma += mat[(nfil - 1) * ncol + j];
+          }
+          // Sumamos los elementos de la columna de la izquierda
+          for (int i{(nfil - 2)}; i >= 1; --i) {
+            suma += mat[i * ncol + 0];
+          }
         }
-        // Sumamos los elementos de la columna de la derecha de la matriz
-        for (int i{1}; i < nfil; ++i) {
-          suma += mat[i * ncol + (ncol - 1)];
-        }
-        // Sumamos los elementos de la fila de abajo
-        for (int j{(ncol - 2)}; j >= 0; --j) {
-          suma += mat[(nfil - 1) * ncol + j];
-        }
-        // Sumamos los elementos de la columna de la izquierda
-        for (int i{(nfil - 2)}; i >= 1; --i) {
-          suma += mat[i * ncol + 0];
-        }
+
         std::cout << "\n\nSuma de los elementos del perímetro: " << suma
                   << "\n";
         break;
       }
       case 4: {
-        int minimo{mat[0]}, maximo{mat[(nfil - 1) * ncol + (ncol - 1)]};
+        int minimo{999}, maximo{0};
+        for (int i{0}; i < ncol; ++i) {
+          if (nfil == 1) {
+            minimo = mat[0];
+            maximo = mat[0];
+            break;
+          }
+          if (minimo > mat[i * ncol + i]) minimo = mat[i * ncol + i];
+          if (maximo < mat[i * ncol + i]) maximo = mat[i * ncol + i];
+        }
         std::cout << "\nEl máximo de la diagonal principal es " << maximo
                   << " y el mínimo " << minimo << "\n";
         break;
