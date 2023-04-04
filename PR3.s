@@ -152,7 +152,11 @@
 #        break;
 #      }
 #      case 4: {
-#        int minimo{mat[0]}, maximo{mat[(nfil - 1) * ncol + (ncol - 1)]};
+#        int minimo{999}, maximo{0};
+#         for (int i{0}; i < ncol; ++i) {
+#           if (minimo > mat[i * ncol + i]) minimo = mat[i * ncol + i];
+#           if (maximo < mat[i * ncol + i]) maximo = mat[i * ncol + i];
+#         }
 #        std::cout << "\nEl máximo de la diagonal principal es " << maximo
 #                  << " y el mínimo " << minimo << "\n";
 #        break;
@@ -641,17 +645,16 @@ case_3:
     bgt $s0, $t0, fin_if_case3 # Si $s0(nfil) > 1 -> nfil != 1
     blt $s0, $t0, fin_if_case3 # Si $s0(nfil) < 1 -> nfil != 1
 # Una vez llegados a este punto podemos decir que nfil == 1
-# // Sumamos elementos primera fila:
-# for (int j{0}; j < ncol; ++j) {
-# suma += mat[j];
-# }
     la  $t2, mat # Primer elemento matriz
-if_case3:
 
+if_case3:
+# int j{0}
+    li $t1, 1
 for_if_case3:
-    bge  $t1, $s1, fin_else_case3     # Si $t1(j) es mayor que ncol($s1), salimos del for y mostramos la suma
+    bgt  $t1, $s1, fin_else_case3     # Si $t1(j) es mayor que ncol($s1), salimos del for y mostramos la suma
     lw   $t3, 0($t2)
-    add  $s3, $s3, $t3                # $s3(suma) += $t2(mat[j])
+# $s3(suma) += $t2(mat[j])    
+    add  $s3, $s3, $t3                
     addi $t2, 4                       # Vamos iterando entre los elementos de la primera fila de la matriz
     addi $t1, 1                       # ++j
     b for_if_case3 # Continuamos iterando en el for
@@ -664,36 +667,36 @@ fin_if_case3:
 #    suma += mat[i * ncol + 0];
 #    }
 # }
-    la  $t1, mat                    # Cargamos el primer elemento de la matriz
-    li  $t0, 1
-    bgt $s1, $t0, fin_else_if_case3 # Si $s1(ncol) > 1 -> ncol != 1
-    blt $s1, $t0, fin_else_if_case3 # Si $s1(ncol) < 1 -> ncol != 1
+    li  $t3, 1
+    bgt $s1, $t3, fin_else_if_case3 # Si $s1(ncol) > 1 -> ncol != 1
+    blt $s1, $t3, fin_else_if_case3 # Si $s1(ncol) < 1 -> ncol != 1
 # Llegados a este punto, podemos decir que ncol == 1
 # int i{(nfil - 1)};
-    sub $t1, $s0, $t0 # $t1(i) = $s0(nfil) - $t0(1)
+    sub $t0, $s0, $t3 # $t0(i) = $s0(nfil) - $t3(1)
 
 else_if_case3:
 
 for_else_if_case3:
     bltz $t0, fin_else_case3 # si $t0(i) < 0, salimos del for y mostramos la suma
+    la  $t2, mat # Cargamos el primer elemento de la matriz
 # Hallamos el valor de mat[i * ncol + 0];
 # 1. Calculamos i * ncol
-    mul $t3, $t0, $s1 # $t3 = $t0(i) * $s1(ncol)
+    mul $t4, $t0, $s1 # $t4 = $t0(i) * $s1(ncol)
 
 # 2. Multiplicamos por 4 el resultado
-    mul $t3, $t3, size # $t3(i * ncol) * 4(size)
+    mul $t4, $t4, size # $t4(i * ncol) * 4(size)
 
 # 3. Accedemos a la posición de memoria i * ncol
-    add $t1, $t3, $t1 
+    add $t2, $t4, $t2 
 
 # Sumar el valor de la posición de memoria obtenido en $t1 a la variable suma($s3)
 
 # suma += mat[i * ncol + 0];
-    lw  $t4, 0($t1)     
-    add $s3, $s3, $t4
+    lw  $t5, 0($t2)     
+    add $s3, $s3, $t5
 
 # --i      
-    sub $t0, $t0, $t2 
+    sub $t0, $t0, $t3 
     b for_else_if_case3 # Continuamos con el for
 fin_for_else_if_case3:
 
@@ -705,12 +708,13 @@ fin_else_if_case3:
 # }
 
 else_case3:
-
-la  $t2, mat # Primer elemento matriz
+# int j{0}
+    li $t1, 0
+    la  $t2, mat # Primer elemento matriz
 for_sumar_elementos_primerafila:
     bge  $t1, $s1, fin_for_sumar_elementos_primerafila # Si $t1(j) es mayor que ncol($s1), salimos del for
     lw   $t3, 0($t2)
-    add  $s3, $s3, $t3             # $s3(suma) += $t2(mat[j])
+    add  $s3, $s3, $t3                # $s3(suma) += $t2(mat[j])
     addi $t2, 4                       # Vamos iterando entre los elementos de la primera fila de la matriz
     addi $t1, 1                       # ++j
     b for_sumar_elementos_primerafila # Continuamos iterando en el for
@@ -720,17 +724,17 @@ fin_for_sumar_elementos_primerafila:
 # for (int i{1}; i < nfil; ++i) {
 # suma += mat[i * ncol + (ncol - 1)];
 # }
-    la $t2, mat # Cargamos el primer elemento de la matriz
+    
  
 # int i{1}
     li $t0, 1 
 
 # Guardamos en un registro (ncol - 1), para usarlo más tarde    
-    move $t3, $s1      # $t3 = $s1(ncol)
-    sub  $t3, $t3, $t0 # $t3 = ncol -1 (utilizamos $t0(i) que contiene un 1 para restarlo con $t3
+    sub $t3, $s1, $t0 # $t3 = ncol -1 (utilizamos $t0(i) que contiene un 1 para restarlo con $s1(ncol)
 
 for_sumar_elementos_columna_derecha:
     bge $t0, $s0, fin_for_sumar_elementos_columna_derecha
+    la $t2, mat # Cargamos el primer elemento de la matriz
 # Primero calculamos mat[i * ncol + (ncol - 1)];
 # 1. Calculamos i * ncol:
     mul $t4, $t0, $s1 # $t4 = $t0(i) * $s1(ncol)
@@ -751,7 +755,7 @@ for_sumar_elementos_columna_derecha:
     add $s3, $s3, $t5 
 
 # ++i
-    addi $t0, 1
+    addi $t0, $t0, 1
     b for_sumar_elementos_columna_derecha
 fin_for_sumar_elementos_columna_derecha:
 
@@ -761,12 +765,12 @@ fin_for_sumar_elementos_columna_derecha:
 # }
 
 # int j{(ncol - 2)}
-    la  $t0, mat      # Cargamos el primer elemento de la matriz
     li  $t2, 2
     sub $t1, $s1, $t2 # $t1(j) = $s1(ncol) - $t2(2)s
     li  $t2, 1        # Cargamos $t2 con un 1 para hacer la operación --j
 for_sumar_elementos_fila_abajo:
     bltz $t1, fin_for_sumar_elementos_fila_abajo # Si $t1(j) < 0 salimos del for
+    la  $t0, mat      # Cargamos el primer elemento de la matriz
 # Calculamos mat[(nfil - 1) * ncol + j]
 # 1. Calculamos nfil -1
     sub $t3, $s0, $t2 # $t3 = $s0(nfil) - $t2(1)
@@ -800,12 +804,13 @@ fin_for_sumar_elementos_fila_abajo:
 # }
 
 # int i{(nfil - 2)}
-    la  $t1, mat      # Cargamos el primer elemento de la matriz
+    
     li  $t2, 2
     sub $t0, $s0, $t2 # $t0(i) = $s0(nfil) - $t2(2) 
     li  $t2, 1        # Cargamos $t2 con un 1 para hacer la operación --i
 for_sumar_elementos_columna_izquierda:
     beqz $t0, fin_for_sumar_elementos_columna_izquierda # si $t0(i) = 0, salimos del for
+    la  $t1, mat      # Cargamos el primer elemento de la matriz
 # Hallamos el valor de mat[i * ncol + 0];
 # 1. Calculamos i * ncol
     mul $t3, $t0, $s1 # $t3 = $t0(i) * $s1(ncol)
@@ -844,12 +849,120 @@ fin_else_case3:
     la $a0, newline
     syscall
 
+    b do_while
 fin_case3:
 ################
 
 ################
 case_4:
+####################
+# Variables case 4:
+# =TEMPORALES=
 
+# =SALVADOS=
+# $s3 -> min
+# $s4 -> max 
+####################  
+#int minimo{999}, maximo{0};
+# for (int i{0}; i < ncol; ++i) {
+#    if (nfil == 1) {
+#      minimo = mat[0];
+#      maximo = mat[0];
+#      break;
+#    }
+#   if (minimo > mat[i * ncol + i]) minimo = mat[i * ncol + i];
+#   if (maximo < mat[i * ncol + i]) maximo = mat[i * ncol + i];
+# }
+
+# int minimo{999}, maximo{0};
+    li $s3, 999
+    li $s4, 0
+
+# int i{0}
+    li $t0, 0
+for_case4:
+    bge $t0, $s1, fin_for_case4 # Si $t0(i) >= $s1(ncol), salimos del for
+#    if (nfil == 1) {
+#      minimo = mat[0];
+#      maximo = mat[0];
+#      break;
+#    }
+    li  $t4, 1 # Variable temporal que usamos para hacer las comparaciones siguientes
+# Comprobamos las dos condiciones inversas a nfil == 1, y si ninguna se cumple no entramos en el if    
+    blt $s0, $t4, fin_if_case4
+    bgt $s0, $t4, fin_if_case4
+# nfil == 1
+if_case4:
+    la $t2, mat # Cargamos el primer elemento de la matriz
+    lw $t4, 0($t2)
+# minimo = mat[0];
+    move $s3, $t4 # $s3(min) = $t4(mat[0])
+# maximo = mat[0];
+    move $s4, $t4 # $s4(max) = $t4(mat[0])
+# break;    
+    b fin_for_case4 # Salimos del bucle 
+fin_if_case4:
+# Calculamos mat[i * ncol + i]
+    la $t2, mat # Cargamos el primer elemento de la matriz
+# 1. Calculamos i * ncol
+    mul $t1, $t0, $s1 # $t1 = $t0(i) * $s1(ncol)
+
+# 2. Le sumamos i
+    add $t1, $t1, $t0 # $t1(i * ncol) += $t0(i)
+
+# 3. Multiplicamos por 4 el resultado
+    mul $t1, $t1, size # $t1(i * ncol + i) *= 4
+
+# 4. Accedemos a la dirección de memoria i * ncol + i
+    add $t2, $t1, $t2
+
+# 5. Almacenamos el valor mat[i * ncol + i] en una variable auxiliar para poder comparar
+    lw $t3, 0($t2) 
+
+# if (minimo > mat[i * ncol + i]) minimo = mat[i * ncol + i];
+    ble $s3, $t3, fin_if_minimo_case4 # Si $s3(min) <= $t3(mat[i * ncol + i]), no entramos en el if
+    if_minimo_case4:
+# minimo = mat[i * ncol + i];
+        move $s3, $t3
+    fin_if_minimo_case4:
+
+# if (maximo < mat[i * ncol + i]) maximo = mat[i * ncol + i];
+    bge $s4, $t3, fin_if_maximo_case4 # Si $s4(max) >= $t3(mat[i * ncol + i]), no entramos en el if    
+    if_maximo_case4:
+# maximo = mat[i * ncol + i];
+        move $s4, $t3
+    fin_if_maximo_case4:
+
+# ++i
+    addi $t0, $t0, 1 
+    b    for_case4 # Continuamos con el for
+fin_for_case4:
+
+# std::cout << "\nEl máximo de la diagonal principal es " << maximo
+#           << " y el mínimo " << minimo << "\n";
+
+# std::cout << "\nEl máximo de la diagonal principal es "
+    li $v0, 4
+    la $a0, msg_max
+    syscall
+
+# << maximo
+    li   $v0, 1
+    move $a0, $s4
+    syscall
+
+# << " y el mínimo "
+    li $v0, 4
+    la $a0, msg_min
+    syscall
+
+# << minimo
+    li   $v0, 1
+    move $a0, $s3
+    syscall
+
+# break;
+    b do_while # Continuamos con el bucle
 fin_case4:
 ################
 default:
