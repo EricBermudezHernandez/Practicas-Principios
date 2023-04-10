@@ -83,28 +83,28 @@
 #      case 2: {
 #        std::cout << "Introduzca fila del primer elemento a cambiar: ";
 #        std::cin >> primer_elemento_fila;
-#         if (primer_elemento_fila < 0) {
+#         if (primer_elemento_fila < 0 || primer_elemento_fila >= nfil) {
 #          std::cout
 #              << "\nError: dimension incorrecta. Numero de fila incorrecto.\n";
 #          continue;
 #         }
 #        std::cout << "Introduzca columna del primer elemento a cambiar: ";
 #        std::cin >> primer_elemento_columna;
-#         if (primer_elemento_columna < 0) {
+#         if (primer_elemento_columna < 0 || primer_elemento_columna >= ncol) {
 #          std::cout << "\nError: dimension incorrecta. Numero de columna "
 #                       "incorrecto.\n";
 #          continue;
 #         }
 #        std::cout << "Introduzca fila del segundo elemento a cambiar: ";
 #        std::cin >> segundo_elemento_fila;
-#         if (segundo_elemento_fila < 0) {
+#         if (segundo_elemento_fila < 0 || segundo_elemento_fila >= nfil) {
 #          std::cout
 #              << "\nError: dimension incorrecta. Numero de fila incorrecto.\n";
 #          continue;
 #        }
 #        std::cout << "Introduzca columna del segundo elemento a cambiar: ";
 #        std::cin >> segundo_elemento_columna;
-#         if (segundo_elemento_columna < 0) {
+#         if (segundo_elemento_columna < 0 || segundo_elemento_columna >= ncol) {
 #          std::cout << "\nError: dimension incorrecta. Numero de columna "
 #                       "incorrecto.\n";
 #          continue;
@@ -154,6 +154,11 @@
 #      case 4: {
 #        int minimo{999}, maximo{0};
 #         for (int i{0}; i < ncol; ++i) {
+#           if (nfil == 1) {
+#             minimo = mat[0];
+#             maximo = mat[0];
+#             break;
+#           }
 #           if (minimo > mat[i * ncol + i]) minimo = mat[i * ncol + i];
 #           if (maximo < mat[i * ncol + i]) maximo = mat[i * ncol + i];
 #         }
@@ -223,9 +228,6 @@ msg_min:    .asciiz " y el mínimo "
 msg_fin:    .asciiz "\nFin del programa.\n"
 
     .text
-# ===== REGISTROS TEMPORALES =====
-
-
 # ===== REGISTROS SALVADOS =====
 # $s0 -> nfil
 # $s1 -> ncol
@@ -277,7 +279,7 @@ for_filas:
     bge $s4, $s0, end_for_filas # si f >= nfil salimos del for
 
 # for (int c{0}; c < ncol; ++c) {
-    li  $s5, 0 #int c{0}
+    li  $s5, 0 # int c{0}
 for_columnas:
     bge $s5, $s1, end_for_columnas # si c >= ncol salimos del for
 # std::cout << mat[f * ncol + c] << "  "; -> Esta línea de código la realizaremos en varios pasos:
@@ -285,7 +287,6 @@ for_columnas:
 # 1. Cargamos la dirección de memoria del primer elemento en un registro 
 # y cargamos en un registro temporal un 4 para poder realizar los desplazamientos
     la $s3, mat # Primer elemento matriz
-    li $t3, 4   # Cargamos un 4 para el desplazamiento
 
 # 2. Realizar la operación f * ncol 
     mul $t2, $s4, $s1 # $t2 = $s4(f) * $s1(ncol)
@@ -294,7 +295,7 @@ for_columnas:
     add $t2, $t2, $s5 # $t2 = $t2(f * ncol) + $s5(c)
 
 # 4. Multiplicar $t2 por 4 para obtener el elemento más tarde
-    mul $t2, $t2, $t3 # $t2(f * ncol + c) *= $t3(4)
+    mul $t2, $t2, size # $t2(f * ncol + c) *= $t3(4)
 
 # 5. Acceder a la posición de memoria por la posición calculada anteriormente
     add $s3, $t2, $s3 # Dirección = dirBase + i-1(f * ncol + c) * Desplazamiento(4)
@@ -313,7 +314,8 @@ for_columnas:
     la $a0, separador
     syscall
 
-    addi $s5, $s5, 1 # ++c
+# ++c
+    addi $s5, $s5, 1 
     b    for_columnas # Seguimos iterando en el segundo for
 end_for_columnas:
 
@@ -322,7 +324,8 @@ end_for_columnas:
     la $a0, newline
     syscall
 
-    addi $s4, $s4, 1 # ++f
+# ++f
+    addi $s4, $s4, 1 
     b    for_filas # Saltamos al primer for
 end_for_filas:
 
@@ -472,12 +475,17 @@ case_2:
     syscall
     move $s3, $v0
 
-# if (primer_elemento_fila < 0) {
-# std::cout
-# << "\nError: dimension incorrecta. Numero de fila incorrecto.\n";
-# continue;
+# if (primer_elemento_fila < 0 || primer_elemento_fila >= nfil) {
+#   std::cout
+#   << "\nError: dimension incorrecta. Numero de fila incorrecto.\n";
+#   continue;
 # }
+# primer_elemento_fila >= nfil
+    bge $s3, $s0, if1_case2
+
+# primer_elemento_fila < 0
     bgez $s3, fin_if1_case2 # Si el número es >= 0, no entramos en el if y continamos el programa
+
 if1_case2:
 # std::cout
 # << "\nError: dimension incorrecta. Numero de fila incorrecto.\n";
@@ -498,12 +506,17 @@ fin_if1_case2:
     syscall
     move $s4, $v0
 
-# if (primer_elemento_columna < 0) {
-# std::cout << "\nError: dimension incorrecta. Numero de columna "
-# "incorrecto.\n";
-# continue;
+# if (primer_elemento_columna < 0 || primer_elemento_columna >= ncol) {
+#   std::cout << "\nError: dimension incorrecta. Numero de columna "
+#   "incorrecto.\n";
+#   continue;
 # }
+# primer_elemento_columna >= ncol   
+    bge $s4, $s1, if2_case2
+
+# primer_elemento_columna < 0
     bgez $s4, fin_if2_case2 # Si el número es >= 0, no entramos en el if y continamos el programa
+    
 if2_case2:
 # std::cout << "\nError: dimension incorrecta. Numero de columna "
 # "incorrecto.\n";
@@ -525,12 +538,17 @@ fin_if2_case2:
     syscall
     move $s5, $v0
 
-# if (segundo_elemento_fila < 0) {
-# std::cout
-# << "\nError: dimension incorrecta. Numero de fila incorrecto.\n";
-# continue;
+# if (segundo_elemento_fila < 0 || segundo_elemento_fila >= nfil) {
+#   std::cout
+#   << "\nError: dimension incorrecta. Numero de fila incorrecto.\n";
+#   continue;
 # }
+# segundo_elemento_fila >= nfil    
+    bge $s5, $s0, if3_case2
+
+# segundo_elemento_fila < 0
     bgez $s5, fin_if3_case2 # Si el número es >= 0, no entramos en el if y continamos el programa
+
 if3_case2:
 # std::cout
 # << "\nError: dimension incorrecta. Numero de fila incorrecto.\n";
@@ -552,12 +570,17 @@ fin_if3_case2:
     syscall
     move $s6, $v0
 
-# if (segundo_elemento_columna < 0) {
+# if (segundo_elemento_columna < 0 || segundo_elemento_columna >= ncol) {
 # std::cout << "\nError: dimension incorrecta. Numero de columna "
 # "incorrecto.\n";
 # continue;
 # }
+# segundo_elemento_columna >= ncol 
+    bge $s6, $s1, if4_case2
+
+# primer_elemento_fila < 0
     bgez $s6, fin_if4_case2 # Si el número es >= 0, no entramos en el if y continamos el programa
+    
 if4_case2:
 # std::cout << "\nError: dimension incorrecta. Numero de columna "
 # "incorrecto.\n";
@@ -572,7 +595,6 @@ fin_if4_case2:
 # 1. Cargamos la dirección de memoria del primer elemento en un registro 
 # y cargamos en un registro temporal un 4 para poder realizar los desplazamientos
     la $t0, mat # Primer elemento matriz
-    li $t2, 4   # Cargamos un 4 para el desplazamiento
 
 # 2. Calcular: primer_elemento_fila * ncol
     mul $t3, $s3, $s1 # $t3 = $s3(primer_elemento_fila) * $s1(ncol)
@@ -580,7 +602,7 @@ fin_if4_case2:
     add $t3, $t3, $s4 # $t3 += primer_elemento_columna
 
 # 4. Multiplicar $t3 por 4 para obtener el elemento más tarde
-    mul $t3, $t3, $t2 # $t3(primer_elemento_fila * ncol + primer_elemento_columna) *= 4
+    mul $t3, $t3, size # $t3(primer_elemento_fila * ncol + primer_elemento_columna) *= 4
 # 5. Acceder a la posición de memoria por la posición calculada anteriormente
     add $t0, $t3, $t0 # Dirección = dirBase + i-1(f * ncol + c) * Desplazamiento(4)
 
@@ -594,7 +616,6 @@ fin_if4_case2:
 # 1. Cargamos la dirección de memoria del primer elemento en un registro 
 # y cargamos en un registro temporal un 4 para poder realizar los desplazamientos
     la $t5, mat # Primer elemento matriz
-    li $t2, 4   # Cargamos un 4 para el desplazamiento
 
 # 2. Calcular: segundo_elemento_fila * ncol
     mul $t4, $s5, $s1 # $t4 = $s5(segundo_elemento_fila) * $s1(ncol)
@@ -602,8 +623,8 @@ fin_if4_case2:
 # 3. Sumar al resultado de la operación segundo_elemento_columna($s6)
     add $t4, $t4, $s6 # $t4(segundo_elemento_fila * ncol) + segundo_elemento_columna
 
-# 4. Multiplicar $t4 por 4($t2) para obtener el elemento más tarde
-    mul $t4, $t4, $t2
+# 4. Multiplicar $t4 por 4(size) para obtener el elemento más tarde
+    mul $t4, $t4, size
 
 # 5. Acceder a la posición de memoria por la posición calculada anteriormente
     add $t5, $t4, $t5
@@ -653,10 +674,13 @@ if_case3:
 for_if_case3:
     bgt  $t1, $s1, fin_else_case3     # Si $t1(j) es mayor que ncol($s1), salimos del for y mostramos la suma
     lw   $t3, 0($t2)
+
 # $s3(suma) += $t2(mat[j])    
     add  $s3, $s3, $t3                
     addi $t2, 4                       # Vamos iterando entre los elementos de la primera fila de la matriz
-    addi $t1, 1                       # ++j
+    
+# ++j    
+    addi $t1, 1                      
     b for_if_case3 # Continuamos iterando en el for
 fin_for_if_case3:
 
@@ -895,13 +919,17 @@ for_case4:
 if_case4:
     la $t2, mat # Cargamos el primer elemento de la matriz
     lw $t4, 0($t2)
+
 # minimo = mat[0];
     move $s3, $t4 # $s3(min) = $t4(mat[0])
+
 # maximo = mat[0];
     move $s4, $t4 # $s4(max) = $t4(mat[0])
+
 # break;    
     b fin_for_case4 # Salimos del bucle 
 fin_if_case4:
+
 # Calculamos mat[i * ncol + i]
     la $t2, mat # Cargamos el primer elemento de la matriz
 # 1. Calculamos i * ncol
