@@ -82,28 +82,28 @@ int main() {
       case 2: {
         std::cout << "Introduzca fila del primer elemento a cambiar: ";
         std::cin >> primer_elemento_fila;
-        if (primer_elemento_fila < 0) {
+        if (primer_elemento_fila < 0 || primer_elemento_fila >= nfil) {
           std::cout
               << "\nError: dimension incorrecta. Numero de fila incorrecto.\n";
           continue;
         }
         std::cout << "Introduzca columna del primer elemento a cambiar: ";
         std::cin >> primer_elemento_columna;
-        if (primer_elemento_columna < 0) {
+        if (primer_elemento_columna < 0 || primer_elemento_columna >= ncol) {
           std::cout << "\nError: dimension incorrecta. Numero de columna "
                        "incorrecto.\n";
           continue;
         }
         std::cout << "Introduzca fila del segundo elemento a cambiar: ";
         std::cin >> segundo_elemento_fila;
-        if (segundo_elemento_fila < 0) {
+        if (segundo_elemento_fila < 0 || segundo_elemento_fila >= nfil) {
           std::cout
               << "\nError: dimension incorrecta. Numero de fila incorrecto.\n";
           continue;
         }
         std::cout << "Introduzca columna del segundo elemento a cambiar: ";
         std::cin >> segundo_elemento_columna;
-        if (segundo_elemento_columna < 0) {
+        if (segundo_elemento_columna < 0 || segundo_elemento_columna >= ncol) {
           std::cout << "\nError: dimension incorrecta. Numero de columna "
                        "incorrecto.\n";
           continue;
