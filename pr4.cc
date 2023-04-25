@@ -2,25 +2,6 @@
 #include <iostream>
 #include <vector>
 
-float v1[] = {10.00000000, 11.00000000, 12.00000000, 13.00000000, 14.00000000,
-              15.00000000, 16.00000000, 17.00000000, 18.00000000, 19.00000000,
-              20.00000000, 21.00000000, 22.00000000, 23.00000000, 24.00000000,
-              25.00000000, 26.00000000, 27.00000000, 28.00000000, 29.00000000,
-              30.00000000, 31.00000000, 32.00000000, 33.00000000, 34.00000000,
-              35.00000000, 36.00000000, 37.00000000, 38.00000000, 39.00000000,
-              40.00000000, 41.00000000, 42.00000000, 43.00000000, 44.00000000,
-              45.00000000, 46.00000000, 47.00000000, 48.00000000, 49.00000000,
-              50.00000000};
-
-float v2[] = {40.00000000, 39.00000000, 38.00000000, 37.00000000, 36.00000000,
-              35.00000000, 34.00000000, 33.00000000, 32.00000000, 31.00000000,
-              30.00000000, 29.00000000, 28.00000000, 27.00000000, 26.00000000,
-              25.00000000, 24.00000000, 23.00000000, 22.00000000, 21.00000000,
-              20.00000000, 19.00000000, 18.00000000, 17.00000000, 16.00000000,
-              15.00000000, 14.00000000, 13.00000000, 12.00000000, 11.00000000,
-              10.00000000, 9.00000000,  8.00000000,  7.00000000,  6.00000000,
-              5.00000000,  4.00000000,  3.00000000,  2.00000000,  1.00000000};
-
 void print_vec(float* direccion_base_vec, int size, char* espacio) {
   for (int i{0}; i < size; i++) {
     std::cout << std::fixed << std::setprecision(8) << *direccion_base_vec++
@@ -30,12 +11,7 @@ void print_vec(float* direccion_base_vec, int size, char* espacio) {
 
 // Ver la manera de como se puede identificar que vector es
 void change_elto(float* direccion_base_vec, int indice, float valor) {
-  for (int i{0}; i <= indice; ++i) {
-    if (i == indice) {
-      *direccion_base_vec = valor;
-    }
-    direccion_base_vec++;
-  }
+  *(direccion_base_vec + indice) = valor;
 }
 
 void swap(float* direccion_base_vec, int indice_primer_elemento,
@@ -72,6 +48,20 @@ float prod_esc(float* direccion_base_vec1, float* direccion_base_vec2,
 int main() {
   char espacio[] = {' '};
   int aux_n1, aux_n2, n1{40}, n2{40}, opcion, opcion_vector, valor, indice;
+  float v1[n1], v2[n2], valor_inicial{10.00000000}, incremento{1.00000000};
+  // Cargamos los valores de los dos vectores:
+  // v1:
+  for (int i{0}; i < n1; ++i) {
+    v1[i] = valor_inicial;
+    valor_inicial += incremento;
+  }
+  // v2:
+  valor_inicial = 40.00000000;
+  incremento = 1.00000000;
+  for (int i{0}; i < n1; ++i) {
+    v2[i] = valor_inicial;
+    valor_inicial -= incremento;
+  }
   std::cout << "\nPractica 4 de Principios de Computadores. Subrutinas.\n";
   do {
     std::cout << "\nVector con dimension " << n1 << std::endl;
@@ -159,8 +149,12 @@ int main() {
         break;
 
       case 4:  // Calcular producto escalar
-        std::cout << "\nEl producto escalar de los vectores es: "
+        if (n1 != n2) {
+          std::cout << "\nError: Los vectores tienen distinta dimension.\n";
+        } else {
+          std::cout << "\nEl producto escalar de los vectores es: "
                   << prod_esc(v1, v2, n1) << std::endl;
+        }
         break;
       default:
         std::cout << "\nError: opcion incorrecta.\n";
