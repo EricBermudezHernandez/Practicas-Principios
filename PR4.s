@@ -5,25 +5,6 @@
 #include <iostream>
 #include <vector>
 
-#float v1[] = {10.00000000, 11.00000000, 12.00000000, 13.00000000, 14.00000000,
-#              15.00000000, 16.00000000, 17.00000000, 18.00000000, 19.00000000,
-#              20.00000000, 21.00000000, 22.00000000, 23.00000000, 24.00000000,
-#              25.00000000, 26.00000000, 27.00000000, 28.00000000, 29.00000000,
-#              30.00000000, 31.00000000, 32.00000000, 33.00000000, 34.00000000,
-#              35.00000000, 36.00000000, 37.00000000, 38.00000000, 39.00000000,
-#              40.00000000, 41.00000000, 42.00000000, 43.00000000, 44.00000000,
-#              45.00000000, 46.00000000, 47.00000000, 48.00000000, 49.00000000,
-#              50.00000000};
-
-#float v2[] = {40.00000000, 39.00000000, 38.00000000, 37.00000000, 36.00000000,
-#              35.00000000, 34.00000000, 33.00000000, 32.00000000, 31.00000000,
-#              30.00000000, 29.00000000, 28.00000000, 27.00000000, 26.00000000,
-#              25.00000000, 24.00000000, 23.00000000, 22.00000000, 21.00000000,
-#              20.00000000, 19.00000000, 18.00000000, 17.00000000, 16.00000000,
-#              15.00000000, 14.00000000, 13.00000000, 12.00000000, 11.00000000,
-#              10.00000000, 9.00000000,  8.00000000,  7.00000000,  6.00000000,
-#              5.00000000,  4.00000000,  3.00000000,  2.00000000,  1.00000000};
-
 #void print_vec(float* direccion_base_vec, int size, char* espacio) {
 #  for (int i{0}; i < size; i++) {
 #    std::cout << std::fixed << std::setprecision(8) << *direccion_base_vec++
@@ -31,7 +12,6 @@
 #  }
 #}
 
-#// Ver la manera de como se puede identificar que vector es
 #void change_elto(float* direccion_base_vec, int indice, float valor) {
 #  *(direccion_base_vec + indice) = valor;
 #}
@@ -226,41 +206,61 @@ print_vec:
 # ========
 # Variables print_vec:
 # == Parámetros ==
-# $a0 -> espacio
-# $a1 -> size
-# $a2 -> v1
-# == Temporales ==
-# $t0 -> i 
-# $t1 -> dirección base v1
-# $t2 -> size
-# $t3 -> espacio
+# $a0 -> v1 -> $20
+# $a1 -> size -> $s1
+# $a2 -> espacio
+# == Salvados ==
+# $f20 -> v1 
+# $s1 -> size
+# $s2 -> espacio
 # ========
 
+# Antes de nada cargamos en la pila para usar registros salvados en esta función
+    addi $sp, $sp, -20
+    s.s  $f20, 0($sp)
+    sw   $s1, 4($sp)
+    sw   $s2, 8($sp)
+    sw   $s3, 12($sp)
+    sw   $s4, 16($sp)
+    sw   $ra, 20($sp)
+
 # Cargamos los parámetros en los registros adecuados
-    move $t2, $a1       # size
-    lw   $t1, 0($a2)    # dirección_base_vec
+    l.s  $f20, 0($a0) # dirección_base_vec
+    move $s1, $a1     # size
+    move $s2, $a2     # espacio
+    move $s4, $a0
     
 # for (int i{0}; i < size; i++)
-    li  $t0, 0
+    li  $s3, 0
 for_prin_vec:
-    beq $t0, $t2, fin_for_prin_vec # Si $t0(i) = $a1(size), salimos de el for
+    beq $s3, $s1, fin_for_prin_vec # Si $s3(i) = $s1(size), salimos de el for
 # std::cout << std::fixed << std::setprecision(8) << *direccion_base_vec++
 # << *espacio;  
+
     li       $v0, 2
-    mtc1     $t1, $f12   # Movemos el valor del registro $t1 al registro $f0
-    syscall
-    addi     $t1, 4 # Incrementamos la posición de el vector
+    mov.s    $f12, $f20
+    syscall 
+    addi     $s4, 4          # Incrementamos la posición de el vector
+    l.s      $f20, 0($s4)    # Cargamos el elemento correspondiente del vectr
 
 # << *espacio;
-    #move $a0, $t3
     li   $v0, 4
+    move $a0, $s2
     syscall
 
 # i++
-    addi $t0, 1
+    addi $s3, 1
 
     b for_prin_vec # Continuamos el bucle
 fin_for_prin_vec:
+# Restauramos todos los valores de vuelta en la pila
+    lw   $s0, 0($sp)
+    lw   $s1, 4($sp)
+    lw   $s2, 8($sp)
+    lw   $s3, 12($sp)
+    lw   $s4, 16($sp)
+    lw   $ra, 20($sp)
+    addi $sp, $sp, 20
 
     jr $ra # Salimos de la función
 print_vec_fin:
@@ -275,17 +275,17 @@ print_vec_fin:
 change_elto:
 # ==========
 # Variables change_elto:
-# $a1 -> direccion_base_vec -> $t0
-# $a2 -> indice -> $t1
+# $a0 -> direccion_base_vec -> $t0
+# $a1 -> indice -> $t1
 # $f12 -> valor -> $f4
 # ==========
 
 #  *(direccion_base_vec + indice) = valor;
 
 # Primero cargamos los parámetros en registros locales
-    lw     $t0, 0($a1)    # Cargamos la dirección base del vector en otro registro
-    move   $t1, $a2       # Cargamos el indice en un registro
-    mov.s  $f4, $f12      # Cargamos el valor en un registro
+    move   $t0, $a0    # Cargamos la dirección base del vector en otro registro
+    move   $t1, $a1    # Cargamos el indice en un registro
+    mov.s  $f4, $f12   # Cargamos el valor en un registro
 
 # direccion_base_vec + indice
 
@@ -334,7 +334,22 @@ mirror_fin:
 #}
 
 mult_add:
+    move $t0, $a0 # Cargamos en $t0 -> numero1
+    move $t1, $a1 # Cargamos en $t1 -> numero2
+    move $t2, $a2 # Cargamos en $t2 -> numero3
 
+# Calculamos ((numero1 * numero2) + numero3)
+# numero1 * numero2
+    mul $t2, $t1, $t2
+
+# Le sumamos $t3
+    add $t2, $t1, $t2 
+
+# Guardamos en la pila el valor 
+    addi $sp, $sp, -4
+    lw   $t2, 0($sp)
+
+    jr $ra # Salimos de la función
 mult_add_fin:
 
 ############################################
@@ -442,9 +457,9 @@ do_while:
 
 # print_vec(v1, n1, espacio);
 # Cargamos los parámetros de la función
-    la   $a0, space # Cargamos el espacio para enviarlo a la función
-    move $a1, $s0   # $a1 = $s0(n1)
-    la   $a2, v1    # Cargamos la dirección de memoria de v1 en $a0
+    la   $a0, v1    # Cargamos la dirección de memoria de el vector
+    move $a1, $s0   # Cargamos en $a1 el valor de $s0(n1)
+    la   $a2, space # Cargamos en $a2 la dirección de memoria de space 
     jal  print_vec  # Llamamos a la función print_vec
 
 # std::cout << std::endl;
@@ -468,9 +483,9 @@ do_while:
     syscall
 # print_vec(v2, n2, espacio);
 # Cargamos los parámetros de la función
-    la   $a0, space # Cargamos el espacio para enviarlo a la función
+    la   $a0, v2 # Cargamos el espacio para enviarlo a la función
     move $a1, $s1   # $a1 = $s1(n2)
-    la   $a2, v2    # Cargamos la dirección de memoria de v2 en $a0
+    la   $a2, space    # Cargamos la dirección de memoria de v2 en $a0
     jal  print_vec  # Llamamos a la función print_vec
 
 # std::cout << std::endl;
@@ -709,8 +724,8 @@ else_opcion_vector1_case2:
 
 # change_elto(v1, indice, valor);   
 
-    la    $a1, v1     # Cargamos la dirección de memoria de v1 en $a1
-    move  $a2, $s4    # $a2 = $s4(indice)
+    la    $a0, v1     # Cargamos la dirección de memoria de v1 en $a0
+    move  $a1, $s4    # $a1 = $s4(indice)
     mov.s $f12, $f4   # $f12 = $f4
     jal  change_elto  # Llamamos a la función change_elto
 
@@ -752,8 +767,8 @@ else_else_if_case2:
     syscall
     mov.s $f4, $f0 
 # change_elto(v2, indice, valor);
-    la    $a1, v2     # Cargamos la dirección de memoria de v2 en $a1
-    move  $a2,  $s4   # $a2 = $s4(indice)
+    la    $a0, v2     # Cargamos la dirección de memoria de v2 en $a0
+    move  $a1, $s4    # $a1 = $s4(indice)
     mov.s $f12, $f4   # $f12 = $f4
     jal  change_elto  # Llamamos a la función change_elto
 
