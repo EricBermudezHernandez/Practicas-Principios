@@ -436,8 +436,11 @@ mult_add:
 # $f13 -> numero2
 # $f14 -> numero3
 ##########
+# Guardamos en la pila $ra para no modificarla
+    addi $sp, $sp, -4
+    sw   $ra, 0($sp)
 
-    mov.s $f4, $f12 # Cargamos en $f4 -> numero1
+    mov.s  $f4, $f12 # Cargamos en $f4 -> numero1
     mov.s  $f5, $f13 # Cargamos en $f5 -> numero2
     mov.s  $f6, $f14 # Cargamos en $f6 -> numero3
 
@@ -450,7 +453,11 @@ mult_add:
 
 #  return ((numero1 * numero2) + numero3);
     mov.s $f0, $f7
-    jr   $ra # Salimos de la función
+
+    lw $ra, 0($sp)
+    addi $sp, $sp, 4
+
+    jr $ra # Salimos de la función
 mult_add_fin:
 
 ############################################
@@ -466,7 +473,70 @@ mult_add_fin:
 #}
 
 prod_esc:
+###########
+# == Parámetros prod_esc ==
+# $a0 -> direccion_base_vec1
+# $a1 -> direccion_base_vec2
+# $a2 -> size
+###########
+# Cargamos en la pila la dirección de $ra y otros registros ya que van a ser modificados
+    addi $sp, $sp, -16
+    sw   $s0, 0($sp)
+    sw   $s1, 4($sp)
+    sw   $s2, 8($sp)
+    sw   $ra, 12($sp)
 
+# Movemos los valores de los parámetros a los registros:
+    move $s2, $a2 # $s2 = $a2(size)
+
+# float resultado{0.0};
+    li.s $f4, 0.0
+
+# int i{0}
+    li $t0, 0
+
+#  for (int i{0}; i < size; ++i) {
+for_prod_esc:
+    beq $t0, $s2, fin_for_prod_esc
+
+# Calculamos (direccion_base_vec1 + i) y (direccion_base_vec2 + i)
+# 1. Movemos la direccion de memoria de v1 y v2 a registros auxiliares 
+    move $s0, $a0 # $s0 = $a0(dir_v1)
+    move $s1, $a1 # $s1 = $a1(dir_v2)
+
+# 2. Multiplicamos el índice(i) por size para que el desplazamiento sea correcto y lo guardamos en un registro temporal
+    mul $t1, $t0, size
+
+# 3. Le sumamos el índice ya multiplicado a $s0 y $s1 que contienen las direcciones de memoria de v1 y v2 respectivamente
+    add $s0, $s0, $t1
+    add $s1, $s1, $t1
+     
+# Llamamos a mult_add y le pasamos el resultado a el registro $t4 que servirá como la variable "resultado"
+    l.s   $f12, 0($s0)
+    l.s   $f13, 0($s1)
+    mov.s $f14, $f4
+    jal   mult_add # Llamamos a mult_add
+
+# resultado = mult_add(*(direccion_base_vec1 + i), *(direccion_base_vec2 + i), resultado);
+    mov.s $f4, $f0
+
+# ++i
+    addi $t0, 1
+    b for_prod_esc # Seguimos con el for
+
+fin_for_prod_esc:
+
+# Restauramos la pila
+    lw   $s0, 0($sp)
+    lw   $s1, 4($sp)
+    lw   $s2, 8($sp)
+    lw   $ra, 12($sp)
+    addi $sp, $sp, 16
+
+# return resultado;
+    mov.s $f0, $f4 # $f0 = $f4(resultado)
+
+    jr $ra # Volvemos al main
 prod_esc_fin:
 
 ############################################
@@ -951,6 +1021,7 @@ if_case4:
     li $v0, 4
     la $a0, error_d_dim
     syscall
+    b do_while # Seguimos con el bucle
 fin_if_case4:
 
 # } else {
@@ -966,6 +1037,10 @@ else_case4:
     la   $a1, v2  # Cargamos la dirección de memoria de v2 en $a1
     move $a2, $s0 # Cargamos el valor de n1(size de los dos vectores) en $a2
     jal prod_esc  # Llamamos a la función prod_esc
+
+    mov.s $f12, $f0
+    li    $v0, 2
+    syscall    
 fin_else_case4:        
 
 # break;
