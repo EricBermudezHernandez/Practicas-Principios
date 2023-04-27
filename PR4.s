@@ -90,7 +90,7 @@
 #        if (opcion_vector == 1) {
 #          std::cout << "\nIntroduzca nueva dimension para el vector (1-40): ";
 #          std::cin >> aux_n1;
-#          if (aux_n1 < 0 || aux_n1 > 40) {
+#          if (aux_n1 <= 0 || aux_n1 > 40) {
 #            std::cout << "\nError: Dimension incorrecta.\n";
 #          } else {
 #            n1 = aux_n1;
@@ -98,7 +98,7 @@
 #        } else if (opcion_vector == 2) {
 #          std::cout << "\nIntroduzca nueva dimension para el vector (1-40): ";
 #          std::cin >> aux_n2;
-#          if (aux_n2 < 0 || aux_n2 > 40) {
+#          if (aux_n2 <= 0 || aux_n2 > 40) {
 #            std::cout << "\nError: Dimension incorrecta.\n";
 #          } else {
 #            n2 = aux_n2;
@@ -217,7 +217,7 @@ print_vec:
 
 # Antes de nada cargamos en la pila para usar registros salvados en esta función
     addi $sp, $sp, -20
-    s.s  $f20, 0($sp)
+    s.s  $f20,0($sp)
     sw   $s1, 4($sp)
     sw   $s2, 8($sp)
     sw   $s3, 12($sp)
@@ -309,7 +309,46 @@ change_elto_fin:
 #}
 
 swap:
+#########
+# Parámetros swap:
+# $a0 -> dir_vec
+# $a1 -> indice_primer elemento(0)
+# $a2 -> indice_segundo elemento(size - 1)
+#########    
+# Usamos la pila para guardar $ra para no modificarlo
+    addi $sp, $sp, -4
+    sw   $ra, 0($sp)
 
+# Pasamos los valores de los parámetros a registros 
+# Cargamos dos veces el valor de $a0 por que vamos a necesitar modificar la dirección 2 veces
+    move $t5, $a0 # $t5 = $a0(dir_vec)
+    move $t4, $a0 # $t4 = $a0(dir_vec)
+    move $t2, $a1 # $t2 = $a1(indice_primer elemento(0))
+    move $t3, $a2 # $t3 = $a2(indice_segundo elemento(size - 1))
+
+# 1. Calculamos (direccion_base_vec) + (indice_primer_elemento) y (direccion_base_vec) + (indice_segundo_elemento)
+# Antes de sumar los indices a las dir. los multiplicamos por 4 para que el desplazamiento sea correcto
+    mul $t2, $t2, size
+    mul $t3, $t3, size
+
+    add $t5, $t5, $t2 # $t5(dir_vec) += indice_primer_elemento
+    add $t4, $t4, $t3 # $t4(dir_vec) += (indice_segundo elemento(size - 1))
+
+# float aux = *(direccion_base_vec + indice_primer_elemento);
+    l.s $f4, 0($t5)
+    l.s $f5, 0($t4) # Segundo auxiliar adicional
+
+# *(direccion_base_vec + indice_primer_elemento) = *(direccion_base_vec + indice_segundo_elemento);
+    s.s $f5, 0($t5) 
+
+# *(direccion_base_vec + indice_segundo_elemento) = aux;
+    s.s $f4, 0($t4)
+
+# Dejamos la pila como estaba
+    lw   $ra, 0($sp)
+    addi $sp, $sp, 4
+
+    jr $ra # Volvemos de la función
 swap_fin:
 
 ############################################
@@ -330,9 +369,10 @@ mirror:
 # $a1 -> size
 #########
 # Usamos la pila para guardar valores en registros salvados:
-    addi $sp, $sp, -4
-    lw   $s0, 0($sp)
-    lw   $s1, 4($sp)
+    addi $sp, $sp, -12
+    sw   $s0, 0($sp)
+    sw   $s1, 4($sp)
+    sw   $ra, 8($sp)
 
 # Cargamos los valores de los parámetros en los registros que guardamos en la pila
     move $s0, $a0 # Cargamos en $a0 la dirección de memoria de el vector
@@ -343,16 +383,39 @@ mirror:
     b fin_if_mirror          # Si no se cumple que size > 1 no entramos en el if
 # if (size > 1) {
 if_mirror:
-    li $a0, 0
-# Calculamos (size - 1) para pasarselo como parámetro a swap
-    move $t1, $s1
-    sub  $t1, $t0
-    ## SEGUIR CARGANDO PARÁMETROS
 
+
+# Calculamos (size - 1) para pasarselo como parámetro a swap
+    move $t1, $s1      # Cargamos el valor de $s1, en $t1 para no modificar el valor original
+    sub  $t1, $t1, $t0 # $t1(size) -= 1($t0)
+# Cargamos parámetros función swap
+    move $a0, $s0 # Cargamos en $a0 la dirección del vector que está en $s0
+    li   $a1, 0   # $a1 = 0
+    move $a2, $t1 # $a2 = (size - 1)
     jal swap # Llamamos a swap
+
+# Llamamos a mirror:
+# Calculamos ++direccion_base_vec
+    addi $s0, 4 # Aumentamos una posicion
+
+# Calculamos size - 2
+    sub $t1, $t1, $t0 # $t1(size - 1) -= 1
+
+# Cargamos los parámetros para mirror
+    move $a0, $s0
+    move $a1, $t1
+    
+    jal mirror # Llamamos a mirror
+
 fin_if_mirror:
 
 else_mirror:
+# Volvemos a cargar la pila como estaba
+    lw   $s0, 0($sp)
+    lw   $s1, 4($sp)
+    lw   $ra, 8($sp)    
+    addi $sp, $sp, 12
+
 # return;
     jr $ra
 
@@ -367,18 +430,27 @@ mirror_fin:
 #}
 
 mult_add:
-    move $t0, $a0 # Cargamos en $t0 -> numero1
-    move $t1, $a1 # Cargamos en $t1 -> numero2
-    move $t2, $a2 # Cargamos en $t2 -> numero3
+##########
+# == Parámetros mult_add ==
+# $f12 -> numero1
+# $f13 -> numero2
+# $f14 -> numero3
+##########
+
+    mov.s $f4, $f12 # Cargamos en $f4 -> numero1
+    mov.s  $f5, $f13 # Cargamos en $f5 -> numero2
+    mov.s  $f6, $f14 # Cargamos en $f6 -> numero3
 
 # Calculamos ((numero1 * numero2) + numero3)
 # numero1 * numero2
-    mul $t2, $t1, $t2
+    mul.s $f7, $f4, $f5 # $t3 = ($f4(numero1) * $f5(numero2))
 
-# Le sumamos $t3
-    add $t2, $t1, $t2 
+# Le sumamos $f6(numero3)
+    add.s $f7, $f7, $f6 # $f7(numero1 * numero2) += $f6(numero3)
 
-    jr $ra # Salimos de la función
+#  return ((numero1 * numero2) + numero3);
+    mov.s $f0, $f7
+    jr   $ra # Salimos de la función
 mult_add_fin:
 
 ############################################
@@ -603,9 +675,9 @@ if_opcion_vector1:
     syscall
     move $s3, $v0
 
-# if (aux_n1 < 0 || aux_n1 > 40) {
+# if (aux_n1 <= 0 || aux_n1 > 40) {
     li   $t1, 40                       # Cargamos registro temporal para realizar comparaciones
-    bltz $s3, if_comprobar_aux_n1      # Si $s3(aux_n1) es < 0 entra en el if
+    blez $s3, if_comprobar_aux_n1      # Si $s3(aux_n1) es <= 0 entra en el if
     bgt  $s3, $t1, if_comprobar_aux_n1 # Si $s3(aux_n1) es > $t1(40) entra en el if
     b fin_if_comprobar_aux_n1          # Llegados a este punto, podemos decir que aux_n1 no cumple las condiciones por lo que no entra en el if
 if_comprobar_aux_n1:
@@ -646,9 +718,9 @@ else_if_opcion_vector2:
     syscall
     move $s4, $v0
 
-# if (aux_n2 < 0 || aux_n2 > 40) {
+# if (aux_n2 <= 0 || aux_n2 > 40) {
     li   $t1, 40                       # Cargamos registro temporal para realizar comparaciones
-    bltz $s4, if_comprobar_aux_n2      # Si $s4 < 0 entramos en el if
+    blez $s4, if_comprobar_aux_n2      # Si $s4 < 0 entramos en el if
     bgt  $s4, $t1, if_comprobar_aux_n2 # Si $s4(aux_n2) > $t1(40) entramos en el if
     b fin_if_comprobar_aux_n2          # Llegados a este punto, podemos decir que aux_n2 no cumple las condiciones por lo que no entra en el if
 if_comprobar_aux_n2:
@@ -835,7 +907,7 @@ case_3:
     li  $t1, 1                            # Cargamos un 1 para comprobar si el usuario quiere modificar v1
     beq $t0, $t1, if_opcion_vector1_case3 # Si $t0(opcion_vector) = 1, el usuario quiere modificar v1, nos metemos en el if correspondiente
     li  $t1, 2                            # Cargamos un 2 para comprobar si el usuario quiere modificar v2
-    beq $t0, $t1, else_if_case2           # Si $t0(opcion_vector) = 2, el usuario quiere modificar v2, entramos en el else if
+    beq $t0, $t1, else_if_case3           # Si $t0(opcion_vector) = 2, el usuario quiere modificar v2, entramos en el else if
     b else_case3                          # El usuario digitó una opción incorrecta, salimos de el bucle    
 # if (opcion_vector == 1) {
 if_opcion_vector1_case3:
@@ -843,6 +915,7 @@ if_opcion_vector1_case3:
     la   $a0, v1  # Cargamos la dirección de memoria de v1 en $a0
     move $a1, $s0 # Cargamos en $a1 el valor de $s0(n1)
     jal mirror    # Llamamos a la función mirror
+    b do_while    # Continuamos con el bucle
 fin_if_opcion_vector1_case3:
 
 
@@ -852,6 +925,7 @@ else_if_case3:
     la   $a0, v2  # Cargamos la dirección de memoria de v2 en $a1
     move $a1, $s1 # Cargamos en $a1 el valor de $s1(n2)
     jal mirror    # Llamamos a la función
+    b do_while    # Continuamos con el bucle
 fin_else_if_case3:
 
 # } else {
