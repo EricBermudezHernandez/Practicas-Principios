@@ -90,7 +90,7 @@
 #        if (opcion_vector == 1) {
 #          std::cout << "\nIntroduzca nueva dimension para el vector (1-40): ";
 #          std::cin >> aux_n1;
-#          if (aux_n1 <= 0 || aux_n1 > 40) {
+#          if (aux_n1 < 0 || aux_n1 > 40) {
 #            std::cout << "\nError: Dimension incorrecta.\n";
 #          } else {
 #            n1 = aux_n1;
@@ -98,7 +98,7 @@
 #        } else if (opcion_vector == 2) {
 #          std::cout << "\nIntroduzca nueva dimension para el vector (1-40): ";
 #          std::cin >> aux_n2;
-#          if (aux_n2 <= 0 || aux_n2 > 40) {
+#          if (aux_n2 < 0 || aux_n2 > 40) {
 #            std::cout << "\nError: Dimension incorrecta.\n";
 #          } else {
 #            n2 = aux_n2;
@@ -254,7 +254,7 @@ for_prin_vec:
     b for_prin_vec # Continuamos el bucle
 fin_for_prin_vec:
 # Restauramos todos los valores de vuelta en la pila
-    l.s  $f20, 0($sp)
+    l.s  $f20,0($sp)
     lw   $s1, 4($sp)
     lw   $s2, 8($sp)
     lw   $s3, 12($sp)
@@ -324,6 +324,39 @@ swap_fin:
 #}
 
 mirror:
+#########
+# == Parámetros mirror ==
+# $a0 -> dir_vec
+# $a1 -> size
+#########
+# Usamos la pila para guardar valores en registros salvados:
+    addi $sp, $sp, -4
+    lw   $s0, 0($sp)
+    lw   $s1, 4($sp)
+
+# Cargamos los valores de los parámetros en los registros que guardamos en la pila
+    move $s0, $a0 # Cargamos en $a0 la dirección de memoria de el vector
+    move $s1, $a1 # Cargamos en $a1 el valor de el size
+
+    li   $t0, 1              # Cargamos un registro temporal con valor 1 para hacer comparaciones
+    bgt  $s1, $t0, if_mirror # Si $s1(size) > 1, entra en el if
+    b fin_if_mirror          # Si no se cumple que size > 1 no entramos en el if
+# if (size > 1) {
+if_mirror:
+    li $a0, 0
+# Calculamos (size - 1) para pasarselo como parámetro a swap
+    move $t1, $s1
+    sub  $t1, $t0
+    ## SEGUIR CARGANDO PARÁMETROS
+
+    jal swap # Llamamos a swap
+fin_if_mirror:
+
+else_mirror:
+# return;
+    jr $ra
+
+fin_else_mirror:
 
 mirror_fin:
 
@@ -344,10 +377,6 @@ mult_add:
 
 # Le sumamos $t3
     add $t2, $t1, $t2 
-
-# Guardamos en la pila el valor 
-    addi $sp, $sp, -4
-    lw   $t2, 0($sp)
 
     jr $ra # Salimos de la función
 mult_add_fin:
@@ -574,9 +603,9 @@ if_opcion_vector1:
     syscall
     move $s3, $v0
 
-# if (aux_n1 <= 0 || aux_n1 > 40) {
+# if (aux_n1 < 0 || aux_n1 > 40) {
     li   $t1, 40                       # Cargamos registro temporal para realizar comparaciones
-    blez $s3, if_comprobar_aux_n1      # Si $s3(aux_n1) es < 0 entra en el if
+    bltz $s3, if_comprobar_aux_n1      # Si $s3(aux_n1) es < 0 entra en el if
     bgt  $s3, $t1, if_comprobar_aux_n1 # Si $s3(aux_n1) es > $t1(40) entra en el if
     b fin_if_comprobar_aux_n1          # Llegados a este punto, podemos decir que aux_n1 no cumple las condiciones por lo que no entra en el if
 if_comprobar_aux_n1:
@@ -619,7 +648,7 @@ else_if_opcion_vector2:
 
 # if (aux_n2 < 0 || aux_n2 > 40) {
     li   $t1, 40                       # Cargamos registro temporal para realizar comparaciones
-    blez $s4, if_comprobar_aux_n2      # Si $s4 < 0 entramos en el if
+    bltz $s4, if_comprobar_aux_n2      # Si $s4 < 0 entramos en el if
     bgt  $s4, $t1, if_comprobar_aux_n2 # Si $s4(aux_n2) > $t1(40) entramos en el if
     b fin_if_comprobar_aux_n2          # Llegados a este punto, podemos decir que aux_n2 no cumple las condiciones por lo que no entra en el if
 if_comprobar_aux_n2:
@@ -685,7 +714,6 @@ case_2:
     li  $t1, 2                            # Cargamos un 2 para comprobar si el usuario quiere modificar v2
     beq $t0, $t1, else_if_case2           # Si $t0(opcion_vector) = 2, el usuario quiere modificar v2, entramos en el else if
     b else_case2                          # El usuario digitó una opción incorrecta, salimos de el bucle
-
 # if (opcion_vector == 1) {
 if_opcion_vector1_case2:
 # std::cout << "\nElija el indice del elemento a cambiar: ";
@@ -697,11 +725,12 @@ if_opcion_vector1_case2:
     li   $v0, 5
     syscall
     move $s4, $v0
-# if (indice < 0 || indice >= n1) {
+
     bltz $s4, if2_opcion_vector1_case2
     bge  $s4, $s0, if2_opcion_vector1_case2
     b fin_if2_opcion_vector1_case2 # Ninguna de las dos opciones del if se cumplen
-
+    
+# if (indice < 0 || indice >= n1) {
 if2_opcion_vector1_case2:
 
 # std::cout << "\nError: Indice incorrecto.\n";
@@ -714,14 +743,14 @@ fin_if2_opcion_vector1_case2:
 else_opcion_vector1_case2:
 
 # std::cout << "\nIntroduce nuevo valor para el elemento elegido: ";
-    li $v0, 4
+    li $v0, 4       
     la $a0, newval
     syscall
 
 # std::cin >> valor;
     li    $v0, 6
     syscall
-    mov.s $f4, $f12
+    mov.s $f4, $f0
 
 # change_elto(v1, indice, valor);   
 
@@ -729,7 +758,7 @@ else_opcion_vector1_case2:
     move  $a1, $s4    # $a1 = $s4(indice)
     mov.s $f12, $f4   # $f12 = $f4
     jal  change_elto  # Llamamos a la función change_elto
-
+    b do_while        # Continuamos con el bucle
 fin_else_opcion_vector1_case2:
 
 # else if (opcion_vector == 2)
@@ -772,7 +801,7 @@ else_else_if_case2:
     move  $a1, $s4    # $a1 = $s4(indice)
     mov.s $f12, $f4   # $f12 = $f4
     jal  change_elto  # Llamamos a la función change_elto
-
+    b do_while        # Seguimos con el bucle
 fin_else_else_if_case2:
 
 fin_else_if_case2:
