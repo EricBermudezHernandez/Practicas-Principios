@@ -369,29 +369,32 @@ mirror:
 # $a1 -> size
 #########
 # Usamos la pila para guardar valores en registros salvados:
-    addi $sp, $sp, -12
+    addi $sp, $sp, -20
     sw   $s0, 0($sp)
     sw   $s1, 4($sp)
     sw   $ra, 8($sp)
+    sw   $s3, 12($sp)
+    sw   $s4, 16($sp)
 
 # Cargamos los valores de los parámetros en los registros que guardamos en la pila
     move $s0, $a0 # Cargamos en $a0 la dirección de memoria de el vector
     move $s1, $a1 # Cargamos en $a1 el valor de el size
 
-    li   $t0, 1              # Cargamos un registro temporal con valor 1 para hacer comparaciones
-    bgt  $s1, $t0, if_mirror # Si $s1(size) > 1, entra en el if
+    li   $s4, 1              # Cargamos un registro temporal con valor 1 para hacer comparaciones
+    bgt  $s1, $s4, if_mirror # Si $s1(size) > 1, entra en el if
     b fin_if_mirror          # Si no se cumple que size > 1 no entramos en el if
+
 # if (size > 1) {
 if_mirror:
 
 
 # Calculamos (size - 1) para pasarselo como parámetro a swap
-    move $t1, $s1      # Cargamos el valor de $s1, en $t1 para no modificar el valor original
-    sub  $t1, $t1, $t0 # $t1(size) -= 1($t0)
+    move $s3, $s1      # Cargamos el valor de $s1, en $s3 para no modificar el valor original
+    sub  $s3, $s3, $s4 # $s3(size) -= 1($s4)
 # Cargamos parámetros función swap
     move $a0, $s0 # Cargamos en $a0 la dirección del vector que está en $s0
     li   $a1, 0   # $a1 = 0
-    move $a2, $t1 # $a2 = (size - 1)
+    move $a2, $s3 # $a2 = (size - 1)
     jal swap # Llamamos a swap
 
 # Llamamos a mirror:
@@ -399,11 +402,11 @@ if_mirror:
     addi $s0, 4 # Aumentamos una posicion
 
 # Calculamos size - 2
-    sub $t1, $t1, $t0 # $t1(size - 1) -= 1
+    sub $s3, $s3, $s4 # $s3(size - 1) -= 1
 
 # Cargamos los parámetros para mirror
     move $a0, $s0
-    move $a1, $t1
+    move $a1, $s3
     
     jal mirror # Llamamos a mirror
 
@@ -413,8 +416,10 @@ else_mirror:
 # Volvemos a cargar la pila como estaba
     lw   $s0, 0($sp)
     lw   $s1, 4($sp)
-    lw   $ra, 8($sp)    
-    addi $sp, $sp, 12
+    lw   $ra, 8($sp)
+    lw   $s3, 12($sp)
+    lw   $s4, 16($sp)    
+    addi $sp, $sp, 20
 
 # return;
     jr $ra
@@ -437,25 +442,33 @@ mult_add:
 # $f14 -> numero3
 ##########
 # Guardamos en la pila $ra para no modificarla
-    addi $sp, $sp, -4
-    sw   $ra, 0($sp)
+    addi $sp, $sp, -20
+    s.s  $f24,0($sp)
+    s.s  $f21,4($sp)
+    s.s  $f22,8($sp)
+    s.s  $f23,12($sp)
+    sw   $ra, 16($sp)
 
-    mov.s  $f4, $f12 # Cargamos en $f4 -> numero1
-    mov.s  $f5, $f13 # Cargamos en $f5 -> numero2
-    mov.s  $f6, $f14 # Cargamos en $f6 -> numero3
+    mov.s  $f21, $f12 # Cargamos en $f21 -> numero1
+    mov.s  $f22, $f13 # Cargamos en $f22 -> numero2
+    mov.s  $f23, $f14 # Cargamos en $f23 -> numero3
 
 # Calculamos ((numero1 * numero2) + numero3)
 # numero1 * numero2
-    mul.s $f7, $f4, $f5 # $t3 = ($f4(numero1) * $f5(numero2))
+    mul.s $f24, $f21, $f22 # $f24 = ($f21(numero1) * $f22(numero2))
 
-# Le sumamos $f6(numero3)
-    add.s $f7, $f7, $f6 # $f7(numero1 * numero2) += $f6(numero3)
+# Le sumamos $f23(numero3)
+    add.s $f24, $f24, $f23 # $f24(numero1 * numero2) += $f23(numero3)
 
 #  return ((numero1 * numero2) + numero3);
-    mov.s $f0, $f7
+    mov.s $f0, $f24
 
-    lw $ra, 0($sp)
-    addi $sp, $sp, 4
+    l.s  $f24, 0($sp)
+    l.s  $f21, 4($sp)
+    l.s  $f22, 8($sp)
+    l.s  $f23, 12($sp)
+    lw   $ra,  16($sp)
+    addi $sp, $sp, 20
 
     jr $ra # Salimos de la función
 mult_add_fin:
@@ -480,24 +493,27 @@ prod_esc:
 # $a2 -> size
 ###########
 # Cargamos en la pila la dirección de $ra y otros registros ya que van a ser modificados
-    addi $sp, $sp, -16
+    addi $sp, $sp, -28
     sw   $s0, 0($sp)
     sw   $s1, 4($sp)
     sw   $s2, 8($sp)
-    sw   $ra, 12($sp)
+    sw   $s5, 12($sp)
+    s.s  $f20,16($sp)
+    sw   $s4, 20($sp)
+    sw   $ra, 24($sp)
 
 # Movemos los valores de los parámetros a los registros:
     move $s2, $a2 # $s2 = $a2(size)
 
 # float resultado{0.0};
-    li.s $f4, 0.0
+    li.s $f20, 0.0
 
 # int i{0}
-    li $t0, 0
+    li $s4, 0
 
 #  for (int i{0}; i < size; ++i) {
 for_prod_esc:
-    beq $t0, $s2, fin_for_prod_esc
+    beq $s4, $s2, fin_for_prod_esc
 
 # Calculamos (direccion_base_vec1 + i) y (direccion_base_vec2 + i)
 # 1. Movemos la direccion de memoria de v1 y v2 a registros auxiliares 
@@ -505,36 +521,38 @@ for_prod_esc:
     move $s1, $a1 # $s1 = $a1(dir_v2)
 
 # 2. Multiplicamos el índice(i) por size para que el desplazamiento sea correcto y lo guardamos en un registro temporal
-    mul $t1, $t0, size
+    mul $s5, $s4, size
 
 # 3. Le sumamos el índice ya multiplicado a $s0 y $s1 que contienen las direcciones de memoria de v1 y v2 respectivamente
-    add $s0, $s0, $t1
-    add $s1, $s1, $t1
+    add $s0, $s0, $s5
+    add $s1, $s1, $s5
      
 # Llamamos a mult_add y le pasamos el resultado a el registro $t4 que servirá como la variable "resultado"
     l.s   $f12, 0($s0)
     l.s   $f13, 0($s1)
-    mov.s $f14, $f4
+    mov.s $f14, $f20
     jal   mult_add # Llamamos a mult_add
 
 # resultado = mult_add(*(direccion_base_vec1 + i), *(direccion_base_vec2 + i), resultado);
-    mov.s $f4, $f0
+    mov.s $f20, $f0
 
 # ++i
-    addi $t0, 1
+    addi $s4, 1
     b for_prod_esc # Seguimos con el for
 
 fin_for_prod_esc:
+# return resultado;
+    mov.s $f1, $f20 # $f1 = $f20(resultado)
 
 # Restauramos la pila
     lw   $s0, 0($sp)
     lw   $s1, 4($sp)
     lw   $s2, 8($sp)
-    lw   $ra, 12($sp)
-    addi $sp, $sp, 16
-
-# return resultado;
-    mov.s $f0, $f4 # $f0 = $f4(resultado)
+    lw   $s5, 12($sp)
+    l.s  $f20,16($sp)
+    lw   $s4, 20($sp)
+    lw   $ra, 24($sp)
+    addi $sp, $sp, 28
 
     jr $ra # Volvemos al main
 prod_esc_fin:
